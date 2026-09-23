@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { ShieldCheck, FileUp, X, ScanSearch, ArrowLeft } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ShieldCheck, FileUp, X, ScanSearch, ArrowLeft, AlertTriangle } from "lucide-react";
 import UploadZone from "./components/UploadZone";
 import Viewer, { type LoadState } from "./components/Viewer";
 import InfoPanel from "./components/InfoPanel";
@@ -29,6 +29,21 @@ export default function App() {
   const [selected, setSelected] = useState<IssueSelection>(null);
   // narrow-screen tab: "issues" = report list, "3d" = viewport
   const [mobileTab, setMobileTab] = useState<"issues" | "3d">("3d");
+  // toast shown when an issue can't be located in the viewport
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showNotice = useCallback((msg: string) => {
+    setNotice(msg);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 5000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
 
   const loadBytes = useCallback(async (name: string, bytes: Uint8Array) => {
     setState({ status: "loading", message: "Extracting model data…" });
@@ -116,6 +131,7 @@ export default function App() {
 
   const clearSelection = useCallback(async () => {
     setSelected(null);
+    setNotice(null);
     await viewerRef.current?.clearHighlight();
   }, []);
 
@@ -127,11 +143,15 @@ export default function App() {
         return;
       }
       if (guids.length === 0) return;
+      // keep the issue selected even if it can't be located in 3D
       setSelected({ key, guids });
-      void viewerRef.current?.highlightGuids(guids);
       setMobileTab("3d"); // narrow screens jump straight to the viewport
+      void viewerRef.current?.highlightGuids(guids).then((located) => {
+        if (located) setNotice(null);
+        else showNotice("该构件无几何表示，无法在模型中定位");
+      });
     },
-    [selected, clearSelection]
+    [selected, clearSelection, showNotice]
   );
 
   const workbench = model !== null && report !== null;
@@ -248,6 +268,21 @@ export default function App() {
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back to issues
               </button>
+            )}
+
+            {/* toast when an issue has no locatable geometry */}
+            {notice && (
+              <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-warning/40 bg-surface/95 px-4 py-2 text-xs shadow-lg backdrop-blur">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                <span>{notice}</span>
+                <button
+                  onClick={() => setNotice(null)}
+                  className="ml-1 rounded p-0.5 text-muted hover:bg-surface2 hover:text-foreground"
+                  aria-label="关闭提示"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             )}
 
             {state.status === "empty" && (

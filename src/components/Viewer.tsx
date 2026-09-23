@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
 import type { IfcViewer } from "../lib/viewer";
 
@@ -14,7 +14,12 @@ interface Props {
   state: LoadState;
 }
 
-export default function Viewer({ viewerRef, readyRef, state }: Props) {
+/**
+ * Memoized so report/selection re-renders never touch the 3D scene.
+ * Scene init + render loop live in a mount-only effect; highlight changes
+ * are pushed into the viewer imperatively via viewerRef.
+ */
+const Viewer = memo(function Viewer({ viewerRef, readyRef, state }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,4 +56,6 @@ export default function Viewer({ viewerRef, readyRef, state }: Props) {
       )}
     </div>
   );
-}
+});
+
+export default Viewer;

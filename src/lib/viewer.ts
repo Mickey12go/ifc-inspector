@@ -9,6 +9,17 @@ export class IfcViewer {
   private ifcLoader!: OBC.IfcLoader;
   private initialized = false;
   private modelId: string | null = null;
+  /** Highlight material is created once and reused — never rebuilt per click. */
+  private readonly highlightMaterial: FRAGS.MaterialDefinition = {
+    color: new THREE.Color(0xff5252),
+    renderedFaces: FRAGS.RenderedFaces.ONE,
+    opacity: 1,
+    transparent: false,
+  };
+  /** Items currently highlighted, so we can restore exactly those. */
+  private lastHighlight: OBC.ModelIdMap | null = null;
+  /** Serializes highlight ops so rapid clicks can't interleave worker calls. */
+  private highlightChain: Promise<void> = Promise.resolve();
 
   async init(container: HTMLElement) {
     if (this.initialized) return;
@@ -77,32 +88,42 @@ export class IfcViewer {
       }
       await this.fragments.core.disposeModel(this.modelId);
       this.modelId = null;
+      this.lastHighlight = null;
     }
   }
 
-  /** Highlight entities by IFC GUID, dim everything else, and fly the camera to frame them. */
-  async highlightGuids(guids: string[]) {
-    if (!this.initialized || guids.length === 0) return;
+  /**
+   * Highlight entities by IFC GUID and fly the camera to frame them.
+   * Returns false when the GUIDs resolve to no rendered items
+   * (e.g. elements without geometric representation).
+   */
+  highlightGuids(guids: string[]): Promise<boolean> {
+    const run = this.highlightChain
+      .then(() => this.applyHighlight(guids))
+      .catch(() => false);
+    this.highlightChain = run.then(() => {});
+    return run;
+  }
+
+  clearHighlight(): Promise<void> {
+    this.highlightChain = this.highlightChain
+      .then(() => this.applyClear())
+      .catch(() => {});
+    return this.highlightChain;
+  }
+
+  private async applyHighlight(guids: string[]): Promise<boolean> {
+    if (!this.initialized || guids.length === 0) return false;
     const map = await this.fragments.guidsToModelIdMap(guids);
-    if (Object.keys(map).length === 0) return;
-    await this.fragments.resetHighlight();
-    // dim all other items so the target stands out
-    await this.fragments.highlight({
-      color: new THREE.Color(0xffffff),
-      renderedFaces: FRAGS.RenderedFaces.ONE,
-      opacity: 0.25,
-      transparent: true,
-    });
-    // emphasize the selected items
-    await this.fragments.highlight(
-      {
-        color: new THREE.Color(0xff5252),
-        renderedFaces: FRAGS.RenderedFaces.ONE,
-        opacity: 1,
-        transparent: false,
-      },
-      map
-    );
+    if (Object.keys(map).length === 0) return false;
+
+    // restore only the previously highlighted items — no full-scene reset,
+    // so the model never flashes back to base colors between selections
+    if (this.lastHighlight) {
+      await this.fragments.resetHighlight(this.lastHighlight);
+    }
+    await this.fragments.highlight(this.highlightMaterial, map);
+    this.lastHighlight = map;
 
     const boxes = await this.fragments.getBBoxes(map);
     if (boxes.length > 0) {
@@ -115,11 +136,16 @@ export class IfcViewer {
       await this.world.camera.controls.setLookAt(pos.x, pos.y, pos.z, center.x, center.y, center.z, true);
     }
     await this.fragments.core.update(true);
+    return true;
   }
 
-  async clearHighlight() {
+  private async applyClear() {
     if (!this.initialized) return;
-    await this.fragments.resetHighlight();
+    if (this.lastHighlight) {
+      // restores the original base materials of exactly those items
+      await this.fragments.resetHighlight(this.lastHighlight);
+      this.lastHighlight = null;
+    }
     await this.fragments.core.update(true);
   }
 
