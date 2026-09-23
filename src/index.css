@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: hsl(222 25% 8%);
+  color: hsl(210 20% 92%);
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+canvas {
+  display: block;
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(220 20% 25%);
+  border-radius: 4px;
+}
