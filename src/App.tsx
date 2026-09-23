@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from "react";
-import { ShieldCheck, FileUp, X, ScanSearch, Box, FileText } from "lucide-react";
+import { ShieldCheck, FileUp, X, ScanSearch, ArrowLeft } from "lucide-react";
 import UploadZone from "./components/UploadZone";
 import Viewer, { type LoadState } from "./components/Viewer";
 import InfoPanel from "./components/InfoPanel";
-import ReportView from "./components/ReportView";
+import { ReportPanel, WorkbenchToolbar, type IssueSelection } from "./components/ReportPanel";
 import type { IfcViewer } from "./lib/viewer";
 import type { IfcModelData, QaReport } from "./lib/ifc/types";
 
@@ -25,8 +25,10 @@ export default function App() {
   const [state, setState] = useState<LoadState>({ status: "empty" });
   const [model, setModel] = useState<LoadedModel | null>(null);
   const [report, setReport] = useState<QaReport | null>(null);
-  const [view, setView] = useState<"model" | "report">("model");
   const [scan, setScan] = useState<ScanState>({ active: false, fraction: 0, label: "" });
+  const [selected, setSelected] = useState<IssueSelection>(null);
+  // narrow-screen tab: "issues" = report list, "3d" = viewport
+  const [mobileTab, setMobileTab] = useState<"issues" | "3d">("3d");
 
   const loadBytes = useCallback(async (name: string, bytes: Uint8Array) => {
     setState({ status: "loading", message: "Extracting model data…" });
@@ -43,7 +45,8 @@ export default function App() {
 
       setModel({ name, bytes, data });
       setReport(null);
-      setView("model");
+      setSelected(null);
+      setMobileTab("3d");
       setState({ status: "ready" });
     } catch (err) {
       setState({
@@ -76,7 +79,8 @@ export default function App() {
     await viewerRef.current?.unload();
     setModel(null);
     setReport(null);
-    setView("model");
+    setSelected(null);
+    setMobileTab("3d");
     setState({ status: "empty" });
   }, []);
 
@@ -103,51 +107,47 @@ export default function App() {
         rules,
         privacy,
       });
-      setView("report");
+      setSelected(null);
+      setMobileTab("issues"); // narrow screens land on the report first
     } finally {
       setScan({ active: false, fraction: 0, label: "" });
     }
   }, [model, scan.active]);
 
-  const focusGuids = useCallback(async (guids: string[]) => {
-    setView("model");
-    // wait a tick for the viewer container to become visible again
-    await new Promise((r) => setTimeout(r, 50));
-    await viewerRef.current?.highlightGuids(guids);
+  const clearSelection = useCallback(async () => {
+    setSelected(null);
+    await viewerRef.current?.clearHighlight();
   }, []);
+
+  const selectIssue = useCallback(
+    (key: string, guids: string[]) => {
+      // toggle off when clicking the already-selected issue
+      if (selected?.key === key) {
+        void clearSelection();
+        return;
+      }
+      if (guids.length === 0) return;
+      setSelected({ key, guids });
+      void viewerRef.current?.highlightGuids(guids);
+      setMobileTab("3d"); // narrow screens jump straight to the viewport
+    },
+    [selected, clearSelection]
+  );
+
+  const workbench = model !== null && report !== null;
 
   return (
     <div className="flex h-full flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-5">
         <ShieldCheck className="h-5 w-5 text-accent" />
         <h1 className="text-sm font-semibold tracking-wide">IFC Inspector</h1>
-        <span className="rounded bg-surface2 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted">
+        <span className="hidden rounded bg-surface2 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted sm:inline">
           QA &amp; Privacy Audit
         </span>
         <div className="ml-auto flex items-center gap-2">
           {model && (
             <>
               <span className="mr-2 hidden font-mono text-xs text-muted sm:inline">{model.name}</span>
-              {report && (
-                <div className="flex overflow-hidden rounded-lg border border-border">
-                  <button
-                    onClick={() => setView("model")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium ${
-                      view === "model" ? "bg-surface2 text-foreground" : "text-muted hover:text-foreground"
-                    }`}
-                  >
-                    <Box className="h-3.5 w-3.5" /> Model
-                  </button>
-                  <button
-                    onClick={() => setView("report")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium ${
-                      view === "report" ? "bg-surface2 text-foreground" : "text-muted hover:text-foreground"
-                    }`}
-                  >
-                    <FileText className="h-3.5 w-3.5" /> Report
-                  </button>
-                </div>
-              )}
               <button
                 onClick={() => void runScan()}
                 disabled={scan.active}
@@ -195,22 +195,67 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex min-h-0 flex-1">
-        {model && view === "model" && <InfoPanel fileName={model.name} data={model.data} />}
-        <div className="relative flex-1">
-          <div className={`absolute inset-0 ${view === "report" && model ? "hidden" : ""}`}>
+      <main className="flex min-h-0 flex-1 flex-col">
+        {workbench && (
+          <WorkbenchToolbar
+            report={report}
+            modelName={model.name}
+            hasSelection={selected !== null}
+            onClear={() => void clearSelection()}
+          />
+        )}
+
+        <div className="relative flex min-h-0 flex-1">
+          {/* Report panel: left column on md+, full-screen overlay tab on narrow screens */}
+          {workbench && (
+            <aside
+              className={
+                mobileTab === "issues"
+                  ? "absolute inset-0 z-20 flex flex-col bg-surface md:static md:z-auto md:w-2/5 md:min-w-[300px] md:max-w-[560px] md:border-r md:border-border"
+                  : "hidden md:static md:flex md:w-2/5 md:min-w-[300px] md:max-w-[560px] md:flex-col md:border-r md:border-border md:bg-surface"
+              }
+            >
+              {/* narrow-only tab header */}
+              <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2 md:hidden">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted">Issues 报告</span>
+                <button
+                  onClick={() => setMobileTab("3d")}
+                  className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-surface2"
+                >
+                  3D View →
+                </button>
+              </div>
+              <ReportPanel report={report} selected={selected} onSelect={selectIssue} />
+            </aside>
+          )}
+
+          {/* Model info sidebar (pre-scan, wide screens only) */}
+          {model && !report && (
+            <div className="hidden md:block">
+              <InfoPanel fileName={model.name} data={model.data} />
+            </div>
+          )}
+
+          {/* 3D viewport pane — always mounted */}
+          <div className="relative min-h-0 min-w-0 flex-1">
             <Viewer viewerRef={viewerRef} readyRef={readyRef} state={state} />
+
+            {/* narrow-only: floating back button after jumping from an issue */}
+            {workbench && mobileTab === "3d" && (
+              <button
+                onClick={() => setMobileTab("issues")}
+                className="absolute left-3 top-3 z-30 flex items-center gap-1.5 rounded-lg border border-border bg-surface/90 px-3 py-1.5 text-xs font-medium shadow-lg backdrop-blur md:hidden"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to issues
+              </button>
+            )}
+
+            {state.status === "empty" && (
+              <div className="absolute inset-0 z-20 bg-background">
+                <UploadZone onFile={(f) => void loadFile(f)} onSample={() => void loadSample()} />
+              </div>
+            )}
           </div>
-          {state.status === "empty" && (
-            <div className="absolute inset-0 z-20 bg-background">
-              <UploadZone onFile={(f) => void loadFile(f)} onSample={() => void loadSample()} />
-            </div>
-          )}
-          {model && view === "report" && report && (
-            <div className="absolute inset-0 z-10 bg-background">
-              <ReportView report={report} modelName={model.name} onFocus={(g) => void focusGuids(g)} />
-            </div>
-          )}
         </div>
       </main>
     </div>

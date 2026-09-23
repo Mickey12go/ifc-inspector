@@ -80,12 +80,20 @@ export class IfcViewer {
     }
   }
 
-  /** Highlight entities by IFC GUID and move the camera to frame them. */
+  /** Highlight entities by IFC GUID, dim everything else, and fly the camera to frame them. */
   async highlightGuids(guids: string[]) {
     if (!this.initialized || guids.length === 0) return;
     const map = await this.fragments.guidsToModelIdMap(guids);
     if (Object.keys(map).length === 0) return;
     await this.fragments.resetHighlight();
+    // dim all other items so the target stands out
+    await this.fragments.highlight({
+      color: new THREE.Color(0xffffff),
+      renderedFaces: FRAGS.RenderedFaces.ONE,
+      opacity: 0.25,
+      transparent: true,
+    });
+    // emphasize the selected items
     await this.fragments.highlight(
       {
         color: new THREE.Color(0xff5252),
