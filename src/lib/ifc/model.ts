@@ -7,8 +7,8 @@ export function getIfcApi(): Promise<IfcAPI> {
   if (!apiPromise) {
     apiPromise = (async () => {
       const api = new IfcAPI();
-      // Browser: wasm is served from /wasm (copied to public/). Node (tests): resolve next to the module.
-      api.SetWasmPath(typeof window === "undefined" ? "" : "/wasm/");
+      // Browser: wasm is served from <base>/wasm (copied to public/). Node (tests): resolve next to the module.
+      api.SetWasmPath(typeof window === "undefined" ? "" : `${import.meta.env.BASE_URL}wasm/`);
       await api.Init();
       return api;
     })();

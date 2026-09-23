@@ -25,7 +25,7 @@ ever touches a backend server.
   grouped issue lists. **Click an issue to highlight & zoom to the element in
   the 3D viewport.** One-click export as JSON and CSV.
 - **F5 — AI advice**: report-page button posts the report to `/api/advise`
-  (Vercel serverless function → OpenAI Responses API, model `gpt-6-astra`)
+  (Vercel serverless function → Kimi/Moonshot Chat Completions API, model `kimi-k3`)
   and returns 3 plain-Chinese suggestions for non-technical users.
 
 ## Tech stack
@@ -60,7 +60,7 @@ npm test           # Vitest unit + integration tests
    extra config needed; `api/advise.ts` is picked up automatically as a
    serverless function.
 3. (Optional, for F5) Project → Settings → Environment Variables:
-   add `OPENAI_API_KEY` = your key. The key is only read server-side in
+   add `KIMI_API_KEY` = your key. The key is only read server-side in
    `api/advise.ts`; it never appears in frontend code or git history.
    Without it the AI button shows "未配置 API Key" instead of failing.
 
@@ -70,7 +70,7 @@ would need to be ported to a Netlify Function.
 ## Project layout
 
 ```
-api/advise.ts              Vercel serverless function (OpenAI Responses API)
+api/advise.ts              Vercel serverless function (Kimi Chat Completions API)
 public/samples/sample.ifc  Built-in demo model (buildingSMART, IFC2X3)
 public/wasm/               web-ifc WASM binaries
 src/

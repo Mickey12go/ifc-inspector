@@ -81,7 +81,7 @@ export default function App() {
 
   const loadSample = useCallback(async () => {
     setState({ status: "loading", message: "Downloading sample model…" });
-    const res = await fetch("/samples/sample.ifc");
+    const res = await fetch(`${import.meta.env.BASE_URL}samples/sample.ifc`);
     if (!res.ok) {
       setState({ status: "error", message: "Sample model not found." });
       return;

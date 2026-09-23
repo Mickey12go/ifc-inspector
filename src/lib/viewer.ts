@@ -42,7 +42,8 @@ export class IfcViewer {
     this.ifcLoader = this.components.get(OBC.IfcLoader);
     await this.ifcLoader.setup({
       autoSetWasm: false,
-      wasm: { path: "/wasm/", absolute: true },
+      // BASE_URL makes this work both on localhost ("/") and GitHub Pages ("/ifc-inspector/")
+      wasm: { path: `${import.meta.env.BASE_URL}wasm/`, absolute: true },
     });
 
     world.camera.controls.addEventListener("update", () => {

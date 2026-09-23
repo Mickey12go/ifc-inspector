@@ -90,7 +90,7 @@ AEC 交付 IFC 模型时，常见流程是：
 
 ### F5 — AI 报告解读
 
-报告页底部提供 "AI Suggestions（AI 生成改进建议）" 按钮。点击后将质检报告 JSON POST 到 `/api/advise`，Vercel serverless 函数读取环境变量 `OPENAI_API_KEY`，调用 OpenAI Responses API（model: `gpt-6-astra`），返回面向非技术用户的 3 条中文改进建议。若未配置 API Key，按钮会提示"未配置 API Key"而不是报错。API Key 只存在于服务端环境变量，不会出现在前端代码或 git 历史。
+ 报告页底部提供 "AI Suggestions（AI 生成改进建议）" 按钮。点击后将质检报告 JSON POST 到 `/api/advise`，Vercel serverless 函数读取环境变量 `KIMI_API_KEY`，调用 Kimi（Moonshot）Chat Completions API（model: `kimi-k3`，baseURL `https://api.moonshot.cn/v1`），返回面向非技术用户的 3 条中文改进建议。若未配置 API Key，按钮会提示"未配置 API Key"而不是报错。API Key 只存在于服务端环境变量，不会出现在前端代码或 git 历史。
 
 ---
 
@@ -99,7 +99,7 @@ AEC 交付 IFC 模型时，常见流程是：
 项目采用 Vite + React 18 + TypeScript 构建，IFC 解析使用 `web-ifc` WebAssembly，3D 渲染通过 `@thatopen/components` 生成 fragments 并交给 Three.js 绘制。规则引擎与隐私审计被设计为纯函数，输入统一的 `IfcModelData`，便于单元测试；UI 层只负责展示与交互。报告导出、AI 建议调用与 3D 高亮定位均通过组件与 `IfcViewer` 类封装，实现了解耦。
 
 ```
-api/advise.ts                  Vercel serverless 函数（OpenAI Responses API）
+api/advise.ts                  Vercel serverless 函数（Kimi Chat Completions API）
 public/samples/sample.ifc      内置演示 IFC 模型
 public/wasm/                   web-ifc WASM 二进制
 src/
@@ -152,7 +152,7 @@ IFC Inspector 把信息泄露审计作为一等公民功能：
 1. **3D 渲染未在 CI 中验证**：由于运行环境无 WebGL，3D 视口的实际渲染效果依赖本地/部署后手动验证。
 2. **超大文件性能有上限**：`extractModelData` 使用 `GetLine(..., flatten=true)` 解析全部实体，50 MB 以上文件会明显变慢；当前通过 `setTimeout` 分块释放 UI，但未做 Web Worker 卸载。
 3. **电话/邮箱正则仍有误报可能**：保守策略已要求电话以 `+` 或分隔符开头，但复杂 IFC 字符串仍可能出现少量误报。
-4. **AI 建议模型未落地**：`gpt-6-astra` 为赛事指定模型，实际可用性需以 OpenAI 端点为准；未配置 Key 时降级为友好提示。
+4. **AI 建议依赖外部服务**：AI 建议使用 Kimi API（`kimi-k3`），需要有效的 `KIMI_API_KEY` 且产生 API 调用费用；未配置 Key 时降级为友好提示。
 5. **界面语言混合**：部分按钮/提示同时出现中英文，决赛前可统一为全英文 UI + 中文报告内容。
 
 ### 未来计划
@@ -180,7 +180,7 @@ npm test           # Vitest 单元 + 集成测试
 
 1. 将代码推送到 GitHub/GitLab，导入到 Vercel。
 2. Framework preset 选择 **Vite**（构建命令 `npm run build`，输出目录 `dist`），`api/advise.ts` 会自动被识别为 serverless 函数。
-3. 如需启用 AI 建议：在 Vercel 项目 Settings → Environment Variables 中添加 `OPENAI_API_KEY`。
+3. 如需启用 AI 建议：在 Vercel 项目 Settings → Environment Variables 中添加 `KIMI_API_KEY`。
 4. 未配置 Key 时，前端按钮会显示"未配置 API Key"的降级提示，不会报错。
 
 ---

@@ -1,10 +1,10 @@
 /**
  * Vercel Serverless Function — POST /api/advise
  *
- * Sends the QA report JSON to the OpenAI Responses API and returns
- * 3 plain-language improvement suggestions in Chinese.
+ * Sends the QA report JSON to the Kimi (Moonshot) Chat Completions API
+ * and returns 3 plain-language improvement suggestions in Chinese.
  *
- * The API key is read exclusively from the OPENAI_API_KEY environment
+ * The API key is read exclusively from the KIMI_API_KEY environment
  * variable configured in the Vercel dashboard — it never appears in
  * frontend code or the git history. When the key is missing the function
  * responds with { configured: false } so the UI can show a friendly hint.
@@ -20,13 +20,16 @@ interface VercelLikeResponse {
   json(payload: unknown): void;
 }
 
+const KIMI_BASE_URL = "https://api.moonshot.cn/v1";
+const KIMI_MODEL = "kimi-k3";
+
 export default async function handler(req: VercelLikeRequest, res: VercelLikeResponse) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "method_not_allowed" });
     return;
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.KIMI_API_KEY;
   if (!apiKey) {
     res.status(200).json({ configured: false, advice: "" });
     return;
@@ -35,15 +38,16 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   const reportJson = JSON.stringify(req.body ?? {}).slice(0, 12000);
 
   try {
-    const upstream = await fetch("https://api.openai.com/v1/responses", {
+    const upstream = await fetch(`${KIMI_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-6-astra",
-        input: [
+        model: KIMI_MODEL,
+        reasoning_effort: "low",
+        messages: [
           {
             role: "system",
             content:
@@ -61,8 +65,11 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       return;
     }
 
-    const data = (await upstream.json()) as { output_text?: string };
-    res.status(200).json({ configured: true, advice: data.output_text ?? "" });
+    const data = (await upstream.json()) as {
+      choices?: Array<{ message?: { content?: string | null } }>;
+    };
+    const advice = data.choices?.[0]?.message?.content ?? "";
+    res.status(200).json({ configured: true, advice });
   } catch {
     res.status(500).json({ error: "internal_error" });
   }

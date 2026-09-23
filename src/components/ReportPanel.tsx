@@ -120,14 +120,14 @@ function AdviseSection({ report }: { report: QaReport }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.configured === false) {
-        setState({ status: "error", text: "未配置 API Key：请在部署平台设置 OPENAI_API_KEY 环境变量后重试。" });
+        setState({ status: "error", text: "未配置 API Key：请在部署平台设置 KIMI_API_KEY 环境变量后重试。" });
       } else {
         setState({ status: "done", text: String(data.advice ?? "") });
       }
     } catch {
       setState({
         status: "error",
-        text: "AI 服务不可用（本地开发环境无 /api 接口，请部署到 Vercel 后使用）。",
+        text: "AI 服务不可用（当前为静态托管环境，无 /api 接口；需部署到 Vercel 并配置 KIMI_API_KEY 后使用）。",
       });
     }
   };
