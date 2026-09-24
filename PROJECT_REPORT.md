@@ -94,6 +94,20 @@ AEC 交付 IFC 模型时，常见流程是：
 
 ---
 
+### 实测数据（基于内置样例 `sample.ifc` 的真实运行结果）
+
+- 模型规格：IFC2X3 schema，共 21 个构件
+- 综合健康分：**70 / 100**
+- 问题总计：**1 个错误（error）、3 个警告（warning）、2 个提示（info）**
+- 质检规则：单位与坐标检查通过；GUID 重复、属性集缺失、命名规范、空几何的具体命中数 [待补充]（*请对照报告界面核实后填入*）
+- 信息泄露审计：
+  - 个人信息审计：**3 个问题**——个人姓名 "Jan B."（IfcPerson #3）；组织名称 "buildingSMART International"（IfcOrganization #4）；组织名称 "BIM-Tools"（IfcOrganization #6）
+  - 元数据摘要：**1 个问题**——文件头（HEADER/FILE_NAME、FILE_DESCRIPTION）含导出时间戳 `2026-06-23T11:53:12`、导出软件 `Sketchup-IFC-manager 5.6.0 / SketchUp 2026 (26.2.242)`、原始文件名 `Building-Architecture.ifc`
+  - 内部路径泄露：通过（未检出）
+  - 注释与自由文本：通过（未检出）
+
+---
+
 ## 4. 技术架构
 
 项目采用 Vite + React 18 + TypeScript 构建，IFC 解析使用 `web-ifc` WebAssembly，3D 渲染通过 `@thatopen/components` 生成 fragments 并交给 Three.js 绘制。规则引擎与隐私审计被设计为纯函数，输入统一的 `IfcModelData`，便于单元测试；UI 层只负责展示与交互。报告导出、AI 建议调用与 3D 高亮定位均通过组件与 `IfcViewer` 类封装，实现了解耦。
@@ -133,6 +147,8 @@ src/
 - 项目内部备注或审校意见。
 
 这些信息一旦随模型交付给业主或第三方，就可能暴露人员信息、软件栈、内部目录结构和项目时间线。
+
+**现实佐证**：本项目的内置样例来自 buildingSMART 官方开源数据集，实测仍检出 3 处个人信息泄露（个人姓名 "Jan B."、组织名称 "buildingSMART International" 与 "BIM-Tools"）和 1 处文件头元数据泄露（导出时间戳、导出软件版本、原始文件名）。连官方示范文件都携带可识别的个人与组织信息，足以说明信息泄露审计不是理论需求。
 
 IFC Inspector 把信息泄露审计作为一等公民功能：
 

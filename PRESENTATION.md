@@ -14,13 +14,13 @@
 
 #### 1. 加载内置样例模型（30 秒）
 
-首先，我们不依赖用户上传文件。首页点击 "Load sample model"，系统会加载内置的开源 IFC 模型。大家可以立刻看到项目名、IFC schema、构件总数和按类型统计的信息。
+首先，我们不依赖用户上传文件。首页点击 "Load sample model"，系统会加载内置的开源 IFC 模型。大家可以立刻看到项目名、IFC schema（IFC2X3）、构件总数（21 个）和按类型统计的信息。
 
 > 🎬 操作：点击 Load sample model，展示 3D 视图与左侧信息面板。
 
 #### 2. 执行质检扫描（1 分钟）
 
-点击 "Run QA Scan"，工具会分块异步扫描模型。扫描完成后，顶部出现健康分和错误/警告/提示数量。我们故意用这个样例来展示真实问题：比如命名不符合 `类型-楼层-编号` 模式、部分构件缺少 `Pset_WallCommon`、以及 IfcRoof 缺少几何表示。
+点击 "Run QA Scan"，工具会分块异步扫描模型。扫描完成后，顶部出现综合健康分 70/100，以及 1 个错误、3 个警告、2 个提示的分布。我们故意用这个样例来展示真实问题：比如命名不符合 `类型-楼层-编号` 模式、部分构件缺少 `Pset_WallCommon`、以及 IfcRoof 缺少几何表示。
 
 > 🎬 操作：点击 Run QA Scan，等待进度条完成，切换到 Report 视图。
 
@@ -38,7 +38,7 @@
 
 #### 5. 信息泄露审计页（1 分钟）
 
-最后是本项目的差异化功能：隐私审计。样例文件头里保留了导出时间、原始文件名和授权用户信息；IfcPerson 里还有作者姓名。工具会列出这些泄露项，并给出修复建议，比如"清除联系方式字段"、"重新导出时清空文件名元数据"。
+最后是本项目的差异化功能：隐私审计。这份 buildingSMART 官方开源样例里，实测检出了 3 处个人信息泄露——IfcPerson 中的作者姓名 "Jan B."，以及组织名称 "buildingSMART International" 和 "BIM-Tools"；文件头里还有导出时间戳 2026-06-23、导出软件 Sketchup-IFC-manager 5.6.0 和原始文件名。连官方示范文件都带着可识别的个人与组织信息，这正是这项功能存在的理由。工具会列出这些泄露项，并给出修复建议，比如"清除联系方式字段"、"重新导出时清空文件名元数据"。
 
 > 🎬 操作：展开隐私审计规则，展示个人信息与元数据摘要。
 
@@ -76,13 +76,13 @@ Hi, I’m the developer of IFC Inspector. Our project is a **browser-only IFC mo
 
 #### 1. Load the bundled sample model (30 sec)
 
-First, we don’t rely on a user-provided file. On the landing page, click "Load sample model" and the app loads a bundled open-source IFC model. You immediately see the project name, IFC schema, total element count, and type breakdown.
+First, we don’t rely on a user-provided file. On the landing page, click "Load sample model" and the app loads a bundled open-source IFC model. You immediately see the project name, the IFC2X3 schema, the total of 21 elements, and the type breakdown.
 
 > 🎬 Action: Click Load sample model; show the 3D viewport and the info sidebar.
 
 #### 2. Run the QA scan (1 min)
 
-Click "Run QA Scan". The tool scans the model in chunked async steps. Once done, a health score appears, together with error/warning/info counts. We deliberately use a sample with real issues: names that don’t follow the `type-floor-number` pattern, missing `Pset_WallCommon`, and an `IfcRoof` without geometry.
+Click "Run QA Scan". The tool scans the model in chunked async steps. Once done, the overall health score of 70/100 appears, with 1 error, 3 warnings, and 2 infos. We deliberately use a sample with real issues: names that don’t follow the `type-floor-number` pattern, missing `Pset_WallCommon`, and an `IfcRoof` without geometry.
 
 > 🎬 Action: Click Run QA Scan; wait for the progress bar; switch to the Report view.
 
@@ -100,7 +100,7 @@ After review, export JSON or CSV with one click. JSON is for downstream systems;
 
 #### 5. Privacy audit page (1 min)
 
-Finally, the feature that differentiates us: privacy audit. The sample file header still contains export timestamp, original file name, and authorization user info; `IfcPerson` even contains the author’s name. The tool lists these leaks and gives concrete fix advice, such as “remove contact fields” or “strip file metadata on re-export.”
+Finally, the feature that differentiates us: privacy audit. Even in this official buildingSMART sample file, the tool found 3 personal-data leaks — the author name "Jan B." in `IfcPerson`, plus the organizations "buildingSMART International" and "BIM-Tools" — and file-header metadata including the export timestamp 2026-06-23, the exporter "Sketchup-IFC-manager 5.6.0", and the original file name. If the official reference file carries identifiable personal and organizational data, that alone proves this audit is necessary. The tool lists each leak with concrete fix advice, such as “remove contact fields” or “strip file metadata on re-export.”
 
 > 🎬 Action: Expand the privacy-audit rules; show personal info and metadata summary.
 
